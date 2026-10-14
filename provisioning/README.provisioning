@@ -1,0 +1,17 @@
+FLASHDRIVE=/dev/mmcblk0
+# or sudo umount /dev/sdb1 /dev/sdb2
+sudo umount ${FLASHDRIVE}* 
+
+# get pishrink:
+wget https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+# Make it executable and move it to your local binaries
+chmod +x pishrink.sh
+sudo mv pishrink.sh ${USER}/bin/
+
+# make a shrunken image
+sudo dd if=/dev/mmcblk0 of=iot_master_v1.img bs=4M status=progress iflag=fullblock
+sudo ${USER}/bin/pishrink.sh -z iot_master_v1.img
+
+# clone
+zcat iot_master_v1.img.gz | sudo dd of=${FLASHDRIVE} bs=4M status=progress oflag=sync
+sudo sync

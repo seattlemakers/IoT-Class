@@ -210,11 +210,22 @@ upstreams:
   groups:
     default:
       - 1.1.1.1
-      - 9.9.9.9
-ports:
-  dns: 5335
+      - 8.8.8.8
+blocking:
+  blackLists:
+    ads:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+  clientGroupsBlock:
+    default:
+      - ads
+  blockType: zeroIP
+  refreshPeriod: 24h
+
+port: 53
+httpPort: 4000
 log:
   level: info
+  format: text
 EOF
     chmod 644 /etc/blocky/config.yml
 

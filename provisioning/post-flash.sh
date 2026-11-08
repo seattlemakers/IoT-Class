@@ -19,14 +19,12 @@ sudo mkdir -p "${ROOTFS_MOUNT}/etc/modprobe.d"
 
 # Decoupled software encryption parameters
 echo "options rtl8192cu swenc=1" | sudo tee "${ROOTFS_MOUNT}/etc/modprobe.d/rtl8192cu.conf" >/dev/null
-echo "options rtlwifi swenc=1" | sudo tee "${ROOTFS_MOUNT}/etc/modprobe.d/rtlwifi.conf" >/dev/null
 
 # Disable NetworkManager Wi-Fi power saving
 sudo mkdir -p "${ROOTFS_MOUNT}/etc/NetworkManager/conf.d"
 cat << 'EOF' | sudo tee "${ROOTFS_MOUNT}/etc/NetworkManager/conf.d/99-wifi.conf" >/dev/null
 [main]
 autoconnect-retries-default=0
-auth-polkit=root-only
 
 [device]
 wifi.scan-rand-mac-address=no

@@ -32,7 +32,6 @@ mkdir -p /etc/NetworkManager/conf.d
 cat << 'EOF' > /etc/NetworkManager/conf.d/99-wifi.conf
 [main]
 autoconnect-retries-default=0
-auth-polkit=root-only
 
 [device]
 wifi.scan-rand-mac-address=no
@@ -41,6 +40,50 @@ wifi.scan-rand-mac-address=no
 wifi.powersave=2
 EOF
 chmod 644 /etc/NetworkManager/conf.d/99-wifi.conf
+
+sudo mkdir -p "/usr/local/bin"
+sudo tee "/usr/local/bin/wifi-infinite-rescan.sh" >/dev/null <<'EOF'
+#!/usr/bin/env bash
+while true; do
+    for dev in /sys/class/net/*; do
+        [[ -d "$dev/phy80211" || -d "$dev/wireless" ]] || continue
+        IFACE="${dev##*/}"
+
+        CARRIER=0
+        read -r CARRIER < "$dev/carrier" 2>/dev/null || CARRIER=0
+
+        if [[ "$CARRIER" != "1" ]]; then
+            STATE=$(nmcli -g GENERAL.STATE dev show "$IFACE" 2>/dev/null || true)
+            if [[ "$STATE" == "30 (disconnected)" ]]; then
+                nmcli dev wifi rescan ifname "$IFACE" >/dev/null 2>&1 || true
+            fi
+        fi
+    done
+    sleep 10
+done
+EOF
+sudo chmod 755 "/usr/local/bin/wifi-infinite-rescan.sh"
+
+sudo mkdir -p "/etc/systemd/system/multi-user.target.wants"
+sudo tee "/etc/systemd/system/wifi-infinite-rescan.service" >/dev/null <<'EOF'
+[Unit]
+Description=Carrier-Gated Infinite Wi-Fi Rescan Loop
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wifi-infinite-rescan.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo chmod 644 "/etc/systemd/system/wifi-infinite-rescan.service"
+sudo ln -sf /etc/systemd/system/wifi-infinite-rescan.service \
+    "/etc/systemd/system/multi-user.target.wants/wifi-infinite-rescan.service"
+
 
 echo "[2/10] Updating base system and installing IoT dependencies..."
 export DEBIAN_FRONTEND=noninteractive
@@ -52,6 +95,10 @@ apt-get install -y --no-install-recommends \
     avahi-daemon avahi-utils dphys-swapfile \
     python3-paho-mqtt python3-dev python3-pip python3-venv \
     build-essential i2c-tools gpiod
+
+sed -i -E 's/^#?[[:space:]]*CONF_SWAPSIZE=.*/CONF_SWAPSIZE=512/' /etc/dphys-swapfile
+dphys-swapfile setup
+dphys-swapfile swapon
 
 systemctl enable avahi-daemon
 
@@ -133,6 +180,7 @@ EOF
     fi
 
     npm install --no-audit --no-fund "${MODULE_LIST[@]}"
+    find "$TARGET_DIR/node_modules" -path "*/@node-rs/bcrypt-linux-arm-gnueabihf/*.node" -delete
 
     if [[ -n "$OWNER" ]]; then
         chown -R "$OWNER":"$OWNER" "$TARGET_DIR"

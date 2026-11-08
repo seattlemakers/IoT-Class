@@ -1,0 +1,98 @@
+substitutions:
+  device_name: "smartplug-01"
+  mqtt_broker: "raspberrypi.local"
+  wifi_ssid_studio: "STUDIO_WIFI_SSID"
+  wifi_password_studio: "STUDIO_WIFI_PASSWORD"
+  wifi_ssid_home: "HOME_WIFI_SSID"
+  wifi_password_home: "HOME_WIFI_PASSWORD"
+
+esphome:
+  name: "${device_name}"
+  friendly_name: "${device_name}"
+
+esp8266:
+  board: esp01_1m
+
+# Disable serial logging to free up UART0 for the CSE7766 energy chip
+logger:
+  baud_rate: 0
+
+ota:
+  platform: esphome
+
+api:
+
+wifi:
+  networks:
+    - ssid: "${wifi_ssid_studio}"
+      password: "${wifi_password_studio}"
+      priority: 2.0
+    - ssid: "${wifi_ssid_home}"
+      password: "${wifi_password_home}"
+      priority: 1.0
+  ap:
+    ssid: "${device_name}-Fallback"
+    password: "fallbackpassword"
+
+  # Uses raw hostname to force unicast DNS resolution, bypassing Windows mDNS .local blocks
+  use_address: "${device_name}"
+
+# UART bus interface for the internal CSE7766 energy meter chip
+uart:
+  rx_pin: GPIO3
+  baud_rate: 4800
+  parity: EVEN
+
+# Real-time power, voltage, current, and accumulated energy sensors
+sensor:
+  - platform: cse7766
+    voltage:
+      name: "Voltage"
+      accuracy_decimals: 1
+    current:
+      name: "Current"
+      accuracy_decimals: 2
+    power:
+      name: "Power"
+      accuracy_decimals: 1
+    energy:
+      name: "Total Energy"
+      accuracy_decimals: 2
+
+# Status LED tied to inverted GPIO13
+status_led:
+  pin:
+    number: GPIO13
+    inverted: true
+
+# The Physical Relay on GPIO12
+switch:
+  - platform: gpio
+    name: "Relay"
+    pin: GPIO12
+    id: relay_switch
+    restore_mode: RESTORE_DEFAULT_OFF
+
+# The Physical Push Button on GPIO0 (Guarantees standalone local control come hell or high water)
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Power Button"
+    on_press:
+      - switch.toggle: relay_switch
+
+# Publish live IP to MQTT so Node-RED always tracks the correct address
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+
+# Outbound telemetry data plane to the Raspberry Pi
+mqtt:
+  broker: "${mqtt_broker}"
+  topic_prefix: "${device_name}"

@@ -1,0 +1,87 @@
+substitutions:
+  device_name: "radarnode-01"
+  mqtt_broker: "sm-iot-host-01.local"
+  wifi_ssid_studio: "SM-Electronics-1"
+  wifi_password_studio: "SM-Electronics-1"
+  wifi_ssid_home: "HOME_WIFI_SSID"
+  wifi_password_home: "HOME_WIFI_PASSWORD"
+
+esphome:
+  name: "${device_name}"
+  friendly_name: "${device_name}"
+
+esp32:
+  board: esp32dev
+
+logger:
+  baud_rate: 115200
+
+ota:
+  - platform: esphome
+
+api:
+
+wifi:
+  networks:
+    - ssid: "${wifi_ssid_studio}"
+      password: "${wifi_password_studio}"
+      priority: 2.0
+    - ssid: "${wifi_ssid_home}"
+      password: "${wifi_password_home}"
+      priority: 1.0
+  ap:
+    ssid: "${device_name}-Fallback"
+    password: "fallbackpassword"
+
+  use_address: "${device_name}"
+
+uart:
+  id: radar_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 256000
+
+ld2410:
+  uart_id: radar_uart
+
+binary_sensor:
+  # Discrete hardware output from LD2410C physical OUT pin
+  - platform: gpio
+    pin: GPIO22
+    name: "Hardware Presence"
+    id: hw_presence
+    device_class: motion
+
+  # Protocol-decoded binary sensors (ESPHome ld2410 schema)
+  - platform: ld2410
+    has_target:
+      name: "UART Target Detected"
+      id: uart_has_target
+      device_class: presence
+    has_moving_target:
+      name: "UART Moving Target"
+      id: uart_moving_target
+      device_class: motion
+    has_still_target:
+      name: "UART Still Target"
+      id: uart_still_target
+      device_class: occupancy
+
+sensor:
+  # Protocol-decoded distance sensors (ESPHome ld2410 schema)
+  - platform: ld2410
+    moving_distance:
+      name: "Moving Distance"
+    still_distance:
+      name: "Still Distance"
+    detection_distance:
+      name: "Detection Distance"
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+
+mqtt:
+  broker: "${mqtt_broker}"
+  topic_prefix: "${device_name}"

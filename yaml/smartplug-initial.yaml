@@ -1,5 +1,13 @@
 substitutions:
+  # Node Identity
   device_name: "smartplug-01"
+
+  # Network Credentials
+  wifi_ssid_studio: "SM-Electronics-1"
+  wifi_password_studio: "SM-Electronics-1"
+  wifi_ssid_home: "HOME_WIFI_SSID"
+  wifi_password_home: "HOME_WIFI_PASSWORD"
+  fallback_password: "${device_name}-Fallback"
 
 esphome:
   name: "${device_name}"
@@ -11,23 +19,21 @@ esp8266:
 logger:
 
 ota:
-  platform: esphome
+  - platform: esphome
 
 api:
 
 wifi:
   networks:
-    - ssid: "STUDIO_WIFI_SSID"
-      password: "STUDIO_WIFI_PASSWORD"
+    - ssid: "${wifi_ssid_studio}"
+      password: "${wifi_password_studio}"
       priority: 2.0
-    - ssid: "HOME_WIFI_SSID"
-      password: "HOME_WIFI_PASSWORD"
+    - ssid: "${wifi_ssid_home}"
+      password: "${wifi_password_home}"
       priority: 1.0
   ap:
     ssid: "${device_name}-Fallback"
-    password: "fallbackpassword"
-
-  use_address: "${device_name}"
+    password: "${fallback_password}"
 
 # The physical relay
 switch:

@@ -1,5 +1,5 @@
 substitutions:
-  device_name: "radarnode-01"
+  device_name: "esp32-radar-01"
   mqtt_broker: "sm-iot-host-01.local"
   wifi_ssid_studio: "SM-Electronics-1"
   wifi_password_studio: "SM-Electronics-1"
